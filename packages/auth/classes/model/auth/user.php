@@ -204,5 +204,5 @@ class Auth_User extends \Orm\Model
 	}
 
 
-    protected static $_behaviours = array();
+    public static function behaviours(){}
 }
