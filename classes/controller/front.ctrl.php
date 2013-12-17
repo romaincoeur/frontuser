@@ -94,6 +94,7 @@ class Controller_Front extends Controller_Front_Application
                         // delete the remember-me cookie if present
                         \Auth::dont_remember_me();
                     }
+
                     // logged in, go back to the page the user came from, or the
                     // application dashboard if no previous page can be detected
                     $success = TRUE;
@@ -134,6 +135,8 @@ class Controller_Front extends Controller_Front_Application
 
         // create the registration fieldset
         $form = \Fieldset::forge('registerform');
+
+        $form->open();
 
         // add a csrf token to prevent CSRF attacks
         $form->form()->add_csrf();
@@ -355,6 +358,11 @@ class Controller_Front extends Controller_Front_Application
 
     public function action_quickReg()
     {
+        return \Nos\FrontCache::callHmvcUncached('frontuser/front/quickRegChoice');
+    }
+
+    public function action_quickRegChoice()
+    {
         $data = array();
 
         // is registration enabled?
@@ -369,6 +377,8 @@ class Controller_Front extends Controller_Front_Application
 
         // add a csrf token to prevent CSRF attacks
         $form->form()->add_csrf();
+
+        $form->open();
 
         // and populate the form with the model properties
         $form->add_model('Model\\Auth_User');
@@ -385,8 +395,6 @@ class Controller_Front extends Controller_Front_Application
         // since it's not on the form, make sure validation doesn't trip on its absence
         $form->field('group_id')->delete_rule('required')->delete_rule('is_numeric');
 
-        $form->disable('username');
-        $form->field('username')->delete_rule('required')->delete_rule('max_length');
 
         $form->add('submit', '', array('type' => 'submit', 'value' => 'Submit', 'class' => 'btn medium primary'));
 
@@ -418,6 +426,8 @@ class Controller_Front extends Controller_Front_Application
                     {
                         // inform the user
                         $data['success'] = __('login.new-account-created');
+                        // log the user
+                        $auth = \Auth::instance();
                         $auth->login($form->validated('email'), $form->validated('password'));
                     }
                     else
@@ -464,7 +474,15 @@ class Controller_Front extends Controller_Front_Application
         }
 
         if (\Auth::check()){
-            return \View::forge('frontuser::front/alreadyReg',$enhancer_args, false);
+            if (\Config::get('auth.driver', 'Simpleauth') == 'Ormauth')
+            {
+                $current_user = Model\Auth_User::find_by_username(\Auth::get_screen_name());
+            }
+            else
+            {
+                $current_user = \Auth\Model\Auth_User::find_by_username(\Auth::get_screen_name());
+            }
+            return \View::forge('frontuser::front/alreadyReg', array('current_user' => $current_user), false);
         } else {
             // pass the fieldset to the form, and display the new user registration view
             return \View::forge('frontuser::front/quickReg',$data,false)->set('form', $form->form()->build($this->main_controller->getUrl()), false);
